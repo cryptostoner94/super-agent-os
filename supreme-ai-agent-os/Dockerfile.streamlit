@@ -15,7 +15,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy frontend
 COPY frontend/streamlit ./frontend/streamlit
-COPY .env .env 2>/dev/null || true
+
+# Provide a default env file in the image so build succeeds even if no host .env exists.
+RUN touch .env
 
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app

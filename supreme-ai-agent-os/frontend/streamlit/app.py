@@ -3,13 +3,24 @@ Supreme AI Agent OS - Streamlit Frontend
 Modern, responsive UI with engaging visuals and smooth interactions
 """
 import json
+import os
 import requests
 import streamlit as st
 from datetime import datetime
 import time
+from streamlit.runtime.secrets import StreamlitSecretNotFoundError
 
 # Configuration
-API = st.secrets.get("SUPREME_API_URL", "http://127.0.0.1:8000")
+API = os.environ.get("SUPREME_API_URL")
+if not API:
+    try:
+        API = st.secrets.get("SUPREME_API_URL")
+    except StreamlitSecretNotFoundError:
+        API = None
+    except Exception:
+        API = None
+
+API = API or "http://127.0.0.1:8000"
 REFRESH_INTERVAL = 30
 
 # Page Config - Must be first
