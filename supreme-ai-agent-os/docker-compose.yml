@@ -1,19 +1,85 @@
+version: '3.9'
+
 services:
-  supreme-api:
-    build: .
-    command: ./venv/bin/python -m uvicorn backend.app.main:app --host 0.0.0.0 --port 8000
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: supreme-backend
     ports:
       - "8000:8000"
-    env_file:
-      - .env
+    environment:
+      - SUPREME_APP_ENV=production
+      - SUPREME_ALLOW_TERMINAL=false
+      - PYTHONUNBUFFERED=1
     volumes:
       - ./data:/app/data
-  supreme-ui:
-    build: .
-    command: ./venv/bin/streamlit run frontend/streamlit/app.py --server.port 8501 --server.address 0.0.0.0 --server.headless true
+      - ./.env:/app/.env
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - supreme-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.streamlit
+    container_name: supreme-frontend
     ports:
       - "8501:8501"
-    env_file:
-      - .env
+    environment:
+      - SUPREME_API_URL=http://backend:8000
+      - STREAMLIT_SERVER_HEADLESS=true
+      - STREAMLIT_SERVER_PORT=8501
+      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
+    volumes:
+      - ./frontend:/app/frontend
+      - ./.env:/app/.env
     depends_on:
-      - supreme-api
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - supreme-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    container_name: supreme-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    networks:
+      - supreme-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+networks:
+  supreme-network:
+    driver: bridge
+
+volumes:
+  data:
+    driver: local
