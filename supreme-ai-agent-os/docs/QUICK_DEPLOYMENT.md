@@ -93,6 +93,12 @@ sudo apt install -y nginx
 #    - Backend: port 8000, command: uvicorn backend.app.main:app --host 0.0.0.0
 #    - Frontend: port 8501, command: streamlit run frontend/streamlit/app.py
 # 4. Add environment variables from .env
+# Include local Ollama models if available:
+# OLLAMA_ENABLED=true
+# OLLAMA_API_URL=http://127.0.0.1:11434
+# OLLAMA_MODEL=llama2
+# OLLAMA_MODEL_2=gpt4all-mini
+# OLLAMA_MODEL_3=orca-mini
 # 5. Deploy
 ```
 

@@ -79,6 +79,11 @@ SUPREME_API_URL=http://127.0.0.1:8000
 SUPREME_PUBLIC_URL=http://127.0.0.1:8501
 
 # LLM Providers
+OLLAMA_ENABLED=true
+OLLAMA_API_URL=http://127.0.0.1:11434
+OLLAMA_MODEL=llama2
+OLLAMA_MODEL_2=gpt4all-mini
+OLLAMA_MODEL_3=orca-mini
 XAI_API_KEY=your_xai_key
 GEMINI_API_KEY=your_gemini_key
 OPENAI_API_KEY=your_openai_key

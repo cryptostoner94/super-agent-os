@@ -10,9 +10,16 @@ services:
       - SUPREME_APP_ENV=production
       - SUPREME_ALLOW_TERMINAL=false
       - PYTHONUNBUFFERED=1
+      - OLLAMA_ENABLED=true
+      - OLLAMA_API_URL=http://ollama:11434
+      - OLLAMA_MODEL=llama2
+      - OLLAMA_MODEL_2=gpt4all-mini
+      - OLLAMA_MODEL_3=orca-mini
     volumes:
       - ./data:/app/data
       - ./.env:/app/.env
+    depends_on:
+      - ollama
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -73,6 +80,22 @@ services:
       options:
         max-size: "5m"
         max-file: "2"
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: supreme-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - supreme-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   supreme-network:

@@ -12,7 +12,11 @@ def env(name: str, default: str = "") -> str:
     return os.getenv(name, default).strip()
 
 def is_enabled(name: str) -> bool:
-    return bool(env(name))
+    value = env(name)
+    return bool(value and value.lower() not in ("false", "0", "no"))
+
+def local_models_enabled() -> bool:
+    return is_enabled("OLLAMA_ENABLED") or bool(env("OLLAMA_MODEL")) or bool(env("OLLAMA_MODEL_2")) or bool(env("OLLAMA_MODEL_3"))
 
 @dataclass(frozen=True)
 class Settings:
@@ -29,6 +33,10 @@ Path(settings.workspace_dir).mkdir(parents=True, exist_ok=True)
 def capabilities() -> dict:
     return {
         "llm": {
+            "ollama": local_models_enabled(),
+            "ollama_model_1": is_enabled("OLLAMA_MODEL"),
+            "ollama_model_2": is_enabled("OLLAMA_MODEL_2"),
+            "ollama_model_3": is_enabled("OLLAMA_MODEL_3"),
             "xai_grok": is_enabled("XAI_API_KEY"),
             "gemini": is_enabled("GEMINI_API_KEY"),
             "bedrock": is_enabled("AWS_ACCESS_KEY_ID") and is_enabled("AWS_SECRET_ACCESS_KEY"),

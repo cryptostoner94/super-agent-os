@@ -7,6 +7,63 @@ from backend.app.core.config import env, capabilities
 class ProviderError(Exception):
     pass
 
+
+def _extract_text(data: dict) -> str:
+    if isinstance(data, dict):
+        choices = data.get("choices")
+        if isinstance(choices, list) and choices:
+            message = choices[0].get("message")
+            if isinstance(message, dict):
+                text = message.get("content")
+                if text:
+                    return text
+        if "result" in data:
+            return str(data["result"])
+        if "text" in data:
+            return str(data["text"])
+    raise ProviderError("Could not parse LLM response")
+
+
+def _ollama(prompt: str) -> Dict[str, str]:
+    api_url = env("OLLAMA_API_URL", "http://127.0.0.1:11434").rstrip("/")
+    model = env("OLLAMA_MODEL", "llama2")
+    if not api_url:
+        raise ProviderError("OLLAMA_API_URL missing")
+    r = requests.post(
+        f"{api_url}/v1/chat/completions",
+        headers={"Content-Type": "application/json"},
+        json={"model": model, "messages": [{"role": "user", "content": prompt}], "temperature": 0.35},
+        timeout=90,
+    )
+    r.raise_for_status()
+    data = r.json()
+    return {"provider": f"ollama:{model}", "text": _extract_text(data)}
+
+
+def _ollama_alt(prompt: str, model_env: str, provider_name: str) -> Dict[str, str]:
+    api_url = env("OLLAMA_API_URL", "http://127.0.0.1:11434").rstrip("/")
+    model = env(model_env, "")
+    if not api_url or not model:
+        raise ProviderError(f"{provider_name} missing or not configured")
+    r = requests.post(
+        f"{api_url}/v1/chat/completions",
+        headers={"Content-Type": "application/json"},
+        json={"model": model, "messages": [{"role": "user", "content": prompt}], "temperature": 0.35},
+        timeout=90,
+    )
+    r.raise_for_status()
+    data = r.json()
+    return {"provider": provider_name, "text": _extract_text(data)}
+
+
+def _ollama_gpt4all(prompt: str) -> Dict[str, str]:
+    return _ollama_alt(prompt, "OLLAMA_MODEL_2", "ollama:gpt4all")
+
+
+def _ollama_orca(prompt: str) -> Dict[str, str]:
+    return _ollama_alt(prompt, "OLLAMA_MODEL_3", "ollama:orca")
+
+
 def _xai(prompt: str) -> Dict[str, str]:
     key = env("XAI_API_KEY")
     model = env("XAI_MODEL", "grok-2-latest")
@@ -92,15 +149,13 @@ def _openrouter(prompt: str) -> Dict[str, str]:
 
 def complete(prompt: str) -> Dict[str, str]:
     """
-    Main priority follows user preference:
-    1. Grok/XAI
-    2. Gemini
-    3. Bedrock
-    4. OpenAI
-    Then uses extra configured providers as emergency fallback.
+    Main priority follows local-first preference:
+    1. Ollama local model(s)
+    2. Remote providers: XAI, Gemini, Bedrock, OpenAI, Groq, OpenRouter
+    Then returns a message with configuration guidance if no provider responds.
     """
     errors = []
-    providers = [_xai, _gemini, _bedrock, _openai, _groq, _openrouter]
+    providers = [_ollama, _ollama_gpt4all, _ollama_orca, _xai, _gemini, _bedrock, _openai, _groq, _openrouter]
     for fn in providers:
         try:
             return fn(prompt)
@@ -108,5 +163,5 @@ def complete(prompt: str) -> Dict[str, str]:
             errors.append(f"{fn.__name__}: {type(e).__name__}: {e}")
     return {
         "provider": "local_no_llm",
-        "text": "No usable LLM provider responded. Configure XAI_API_KEY, GEMINI_API_KEY, AWS Bedrock, OPENAI_API_KEY, GROQ_API_KEY, or OPENROUTER_API_KEY in .env.\n\nErrors:\n" + "\n".join(errors[-5:]),
+        "text": "No usable LLM provider responded. Configure one of the following in .env: OLLAMA_ENABLED, OLLAMA_API_URL, OLLAMA_MODEL, OLLAMA_MODEL_2, or OLLAMA_MODEL_3; or configure XAI_API_KEY, GEMINI_API_KEY, AWS Bedrock, OPENAI_API_KEY, GROQ_API_KEY, or OPENROUTER_API_KEY.\n\nErrors:\n" + "\n".join(errors[-5:]),
     }
