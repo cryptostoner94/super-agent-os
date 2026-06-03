@@ -104,3 +104,5 @@ networks:
 volumes:
   data:
     driver: local
+  ollama_data:
+    driver: local
