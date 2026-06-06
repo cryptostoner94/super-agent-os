@@ -15,7 +15,7 @@ class TestHealth:
         response = client.get("/health")
         assert response.status_code == 200
         assert response.json()["status"] == "ok"
-        assert "timestamp" in response.json()
+        assert "version" in response.json()
     
     def test_root_endpoint(self):
         response = client.get("/")

@@ -3,12 +3,64 @@ __pycache__/
 *.py[cod]
 *$py.class
 .pytest_cache/
+*.pyc
+*.pyo
+*.pyd
 
-# Environment
+# Secrets — never commit keys, tokens, or binary credentials
 .env
+.env.local
+.env.*.local
+*.secret
+*.bin
+*.key
+*.pem
+*.p12
+*.pfx
+*_secret*
+*_key*
+*identity_secret*
+*encryption_key*
+*session_signing*
 
-# VS Code
+# Runtime-generated directories — created automatically on first run
+data/
+runtime/
+storage/
+artifacts/
+logs/
+
+# VS Code / editors
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
 
-# Docker
+# Docker build artifacts
 *.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Test coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+
+# Jupyter
+.ipynb_checkpoints/

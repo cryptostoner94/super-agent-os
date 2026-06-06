@@ -1,0 +1,9 @@
+{
+  "_note": "This file is auto-generated on first run. Do not commit the generated version.",
+  "instance_id": "<generated-uuid>",
+  "created_at": 0,
+  "product": "SUPAR SMART AI — Inception Runtime",
+  "version": "2.0.0",
+  "schema": 1,
+  "fingerprint": "<sha256-first-16-chars>"
+}

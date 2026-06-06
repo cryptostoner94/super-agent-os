@@ -1,80 +1,83 @@
+
 services:
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: supreme-backend
+  api:
+    build: .
+    container_name: supreme-api
+    restart: unless-stopped
+    command: uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --workers 1
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      - SUPREME_APP_ENV=production
-      - SUPREME_ALLOW_TERMINAL=false
+      - SUPREME_DB_DIR=/app/data/state
+      - UAC_ROOT=/app/data/.supreme-os
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
       - PYTHONUNBUFFERED=1
-      - OLLAMA_ENABLED=true
-      - OLLAMA_API_URL=http://ollama:11434
-      - OLLAMA_MODEL=llama2
-      - OLLAMA_MODEL_2=gpt4all-mini
-      - OLLAMA_MODEL_3=orca-mini
     volumes:
       - ./data:/app/data
-      - ./.env:/app/.env
     depends_on:
-      - ollama
-    restart: unless-stopped
+      ollama:
+        condition: service_started
+    networks:
+      - supreme-net
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-    networks:
-      - supreme-network
+      interval: 15s
+      timeout: 8s
+      retries: 6
+      start_period: 30s
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
 
-  frontend:
+  dashboard:
     build:
       context: .
       dockerfile: Dockerfile.streamlit
-    container_name: supreme-frontend
+    container_name: supreme-dashboard
+    restart: unless-stopped
     ports:
       - "8501:8501"
+    env_file:
+      - .env
     environment:
-      - SUPREME_API_URL=http://backend:8000
-      - STREAMLIT_SERVER_HEADLESS=true
-      - STREAMLIT_SERVER_PORT=8501
-      - STREAMLIT_SERVER_ADDRESS=0.0.0.0
-    volumes:
-      - ./frontend:/app/frontend
-      - ./.env:/app/.env
+      - SUPREME_API_URL=http://api:8000
     depends_on:
-      backend:
+      api:
         condition: service_healthy
-    restart: unless-stopped
     networks:
-      - supreme-network
+      - supreme-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
 
-  redis:
-    image: redis:7-alpine
-    container_name: supreme-redis
-    ports:
-      - "6379:6379"
+  telegram:
+    build: .
+    container_name: supreme-telegram
     restart: unless-stopped
+    command: python telegram_bot/bot.py
+    env_file:
+      - .env
+    environment:
+      - SUPREME_API_URL=http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
     networks:
-      - supreme-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - supreme-net
+    profiles:
+      - telegram
     logging:
       driver: "json-file"
       options:
@@ -84,25 +87,47 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: supreme-ollama
+    restart: unless-stopped
     ports:
       - "11434:11434"
     volumes:
-      - ollama_data:/root/.ollama
-    restart: unless-stopped
+      - ollama-models:/root/.ollama
     networks:
-      - supreme-network
+      - supreme-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     logging:
       driver: "json-file"
       options:
         max-size: "10m"
         max-file: "3"
 
+  redis:
+    image: redis:7-alpine
+    container_name: supreme-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - supreme-net
+    profiles:
+      - redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 networks:
-  supreme-network:
+  supreme-net:
     driver: bridge
 
 volumes:
-  data:
-    driver: local
-  ollama_data:
-    driver: local
+  ollama-models:
+  redis-data:
