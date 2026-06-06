@@ -369,7 +369,9 @@ async def browser_fetch(payload: dict):
     url = payload.get("url")
     if not url:
         raise HTTPException(400, "url required")
-    return await fetch_page(url)
+    cookies = payload.get("cookies")
+    storage_state = payload.get("storage_state")
+    return await fetch_page(url, cookies=cookies, storage_state=storage_state)
 
 @app.post("/browser/extract")
 @app.post("/api/browser/extract")
@@ -387,7 +389,70 @@ async def browser_screenshot(payload: dict):
     url = payload.get("url")
     if not url:
         raise HTTPException(400, "url required")
-    return await take_screenshot(url)
+    return await take_screenshot(url, full_page=payload.get("full_page", False))
+
+@app.post("/browser/click")
+async def browser_click(payload: dict):
+    from backend.app.browser import click as do_click
+    url, selector = payload.get("url"), payload.get("selector")
+    if not url or not selector:
+        raise HTTPException(400, "url and selector required")
+    return await do_click(url, selector)
+
+@app.post("/browser/type")
+async def browser_type(payload: dict):
+    from backend.app.browser import type_text
+    url, selector, text = payload.get("url"), payload.get("selector"), payload.get("text", "")
+    if not url or not selector:
+        raise HTTPException(400, "url and selector required")
+    return await type_text(url, selector, text, submit=payload.get("submit", False))
+
+@app.post("/browser/upload")
+async def browser_upload(payload: dict):
+    from backend.app.browser import upload_file
+    url, selector, path = payload.get("url"), payload.get("selector"), payload.get("file_path")
+    if not url or not selector or not path:
+        raise HTTPException(400, "url, selector, and file_path required")
+    return await upload_file(url, selector, path)
+
+@app.post("/browser/download")
+async def browser_download(payload: dict):
+    from backend.app.browser import download_file
+    url = payload.get("url")
+    if not url:
+        raise HTTPException(400, "url required")
+    return await download_file(url, save_dir=payload.get("save_dir", "data/artifacts"))
+
+@app.post("/browser/cookies")
+async def browser_cookies(payload: dict):
+    from backend.app.browser import get_cookies
+    url = payload.get("url")
+    if not url:
+        raise HTTPException(400, "url required")
+    return await get_cookies(url)
+
+@app.post("/browser/tabs")
+async def browser_tabs(payload: dict):
+    from backend.app.browser import multi_tab
+    urls = payload.get("urls", [])
+    if not urls:
+        raise HTTPException(400, "urls list required")
+    return await multi_tab(urls)
+
+@app.post("/browser/login")
+async def browser_login(payload: dict):
+    from backend.app.browser import login_session
+    url = payload.get("url")
+    if not url:
+        raise HTTPException(400, "url required")
+    return await login_session(
+        url,
+        username_sel=payload.get("username_selector", "input[name='username']"),
+        password_sel=payload.get("password_selector", "input[name='password']"),
+        username=payload.get("username", ""),
+        password=payload.get("password", ""),
+        submit_sel=payload.get("submit_selector"),
+    )
 
 @app.post("/browser/summarize")
 async def browser_summarize(payload: dict):

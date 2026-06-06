@@ -135,8 +135,19 @@ fi
 
 hdr "5. Start Core Services"
 
-docker compose up -d api dashboard ollama
-ok "Services started: api, dashboard, ollama"
+docker compose up -d browserless ollama
+info "Waiting for Browserless (up to 30s)..."
+ELAPSED=0
+while ! curl -sf http://localhost:3000/pressure >/dev/null 2>&1; do
+  sleep 2; ELAPSED=$((ELAPSED+2))
+  [[ $ELAPSED -ge 30 ]] && { warn "Browserless slow — continuing"; break; }
+  printf "."
+done
+echo ""
+ok "Browserless: remote Chrome ready at http://localhost:3000"
+
+docker compose up -d api dashboard
+ok "Services started: api, dashboard, browserless, ollama"
 
 hdr "6. Health Checks"
 
@@ -227,7 +238,14 @@ info "Browser engine check:"
 BROWSER_INFO=$(curl -sf http://localhost:8000/api/browser/status 2>/dev/null)
 BROWSER_ENGINE=$(echo "$BROWSER_INFO" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('engine','unknown'))" 2>/dev/null || echo "unknown")
 BROWSER_MODE=$(echo "$BROWSER_INFO" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('mode','unknown'))" 2>/dev/null || echo "unknown")
-ok "Browser: $BROWSER_ENGINE ($BROWSER_MODE mode)"
+BROWSER_SRC=$(echo "$BROWSER_INFO" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('source',''))" 2>/dev/null || echo "")
+BROWSER_AVAIL=$(echo "$BROWSER_INFO" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('available',False))" 2>/dev/null || echo "False")
+if [[ "$BROWSER_AVAIL" == "True" ]]; then
+  ok "Browser: $BROWSER_ENGINE ($BROWSER_SRC) — $BROWSER_MODE mode — OPERATIONAL"
+else
+  warn "Browser: $BROWSER_ENGINE — httpx fallback only. Browserless container status:"
+  curl -sf http://localhost:3000/pressure 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print('  running:', d.get('running',0), 'queued:', d.get('queued',0))" 2>/dev/null || warn "  Browserless not responding"
+fi
 
 echo ""
 if [[ $FAIL -eq 0 ]]; then

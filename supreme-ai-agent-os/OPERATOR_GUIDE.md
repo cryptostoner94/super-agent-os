@@ -207,22 +207,61 @@ pytest tests/test_api.py -q
 
 ## Browser Engine
 
-The browser runs in dual-mode — it always works:
+Production-grade multi-engine browser with automatic selection:
 
-- **Playwright mode** (full): screenshots, JS execution — requires system Chromium
-- **httpx mode** (always available): page fetch, text extraction, BeautifulSoup parsing
+| Priority | Engine | Source | Capabilities |
+|---|---|---|---|
+| 1 | `playwright_system` | `/usr/bin/chromium` (Docker) | Full: click, type, screenshot, JS, sessions, download, upload, multi-tab |
+| 2 | `playwright_bundled` | Playwright-managed Chromium | Full |
+| 3 | `playwright_remote` | Browserless CDP (`BROWSERLESS_URL`) | Full (remote) |
+| 4 | `browser_use` | AI-native Playwright wrapper | Full + natural language |
+| 5 | `selenium` | `/usr/bin/chromedriver` (Docker) | Full (no multi-tab) |
+| fallback | `httpx_fallback` | HTTP client | Text/links only — `available=False` |
 
-Playwright is installed in the Docker image via system `chromium` package. If running locally without Docker:
+**httpx is NOT a browser engine.** `available=True` only when a real browser is running.
+
+### In Docker (default — always full browser)
+
+`docker compose up` starts Browserless automatically. The API connects to it as remote Chrome.
+System Chromium in the API container is also tried first.
 
 ```bash
-pip install playwright && python -m playwright install chromium
+# Browserless is always-on (port 3000)
+docker compose up -d browserless
+
+# Check which engine is active
+curl http://localhost:8000/api/browser/status | python3 -m json.tool
+
+# Browser operations
+curl -s -X POST http://localhost:8000/browser/screenshot \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com"}' | python3 -c "import json,sys,base64; d=json.load(sys.stdin); open('/tmp/ss.png','wb').write(base64.b64decode(d['screenshot_b64']))" && echo "saved to /tmp/ss.png"
 ```
 
-Check engine status:
+### Remote Chromium (Browserless cloud)
 
-```bash
-curl http://localhost:8000/api/browser/status
+```env
+# .env
+BROWSERLESS_URL=wss://chrome.browserless.io?token=YOUR_TOKEN
 ```
+
+### Browser API routes
+
+| Route | Method | Description |
+|---|---|---|
+| `/api/browser/status` | GET | Engine status, availability, features |
+| `/api/browser/open` | POST | Fetch page with JS rendering + screenshot |
+| `/api/browser/extract` | POST | Extract text and links |
+| `/api/browser/screenshot` | POST | Capture full screenshot (base64 PNG) |
+| `/api/browser/plan` | POST | Analyze forms on page |
+| `/browser/click` | POST | Navigate + click selector |
+| `/browser/type` | POST | Fill input field |
+| `/browser/upload` | POST | Upload file to input |
+| `/browser/download` | POST | Download file to disk |
+| `/browser/cookies` | POST | Get session cookies |
+| `/browser/tabs` | POST | Open multiple URLs in parallel |
+| `/browser/login` | POST | Login + persist session state |
+| `/browser/script` | POST | Execute JavaScript |
 
 ---
 
