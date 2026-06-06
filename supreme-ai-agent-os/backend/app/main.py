@@ -363,6 +363,7 @@ async def browser_status():
     return await bs()
 
 @app.post("/browser/fetch")
+@app.post("/api/browser/open")
 async def browser_fetch(payload: dict):
     from backend.app.browser import fetch_page
     url = payload.get("url")
@@ -371,12 +372,22 @@ async def browser_fetch(payload: dict):
     return await fetch_page(url)
 
 @app.post("/browser/extract")
+@app.post("/api/browser/extract")
 async def browser_extract(payload: dict):
     from backend.app.browser import extract_text
     url = payload.get("url")
     if not url:
         raise HTTPException(400, "url required")
     return await extract_text(url)
+
+@app.post("/browser/screenshot")
+@app.post("/api/browser/screenshot")
+async def browser_screenshot(payload: dict):
+    from backend.app.browser import screenshot as take_screenshot
+    url = payload.get("url")
+    if not url:
+        raise HTTPException(400, "url required")
+    return await take_screenshot(url)
 
 @app.post("/browser/summarize")
 async def browser_summarize(payload: dict):
@@ -396,6 +407,7 @@ async def browser_structured(payload: dict):
     return await structured_extract(url, schema)
 
 @app.post("/browser/form_plan")
+@app.post("/api/browser/plan")
 async def browser_form_plan(payload: dict):
     from backend.app.browser import plan_form_interaction
     url = payload.get("url")
@@ -403,6 +415,15 @@ async def browser_form_plan(payload: dict):
     if not url:
         raise HTTPException(400, "url required")
     return await plan_form_interaction(url, goal)
+
+@app.post("/browser/navigate")
+async def browser_navigate(payload: dict):
+    from backend.app.browser import navigate
+    url = payload.get("url")
+    selector = payload.get("selector", "")
+    if not url:
+        raise HTTPException(400, "url required")
+    return await navigate(url, selector)
 
 @app.post("/browser/script")
 async def browser_script(payload: dict):
