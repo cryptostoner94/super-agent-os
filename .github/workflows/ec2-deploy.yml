@@ -1,0 +1,40 @@
+name: EC2 Deploy Latest
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to deploy'
+        required: false
+        default: 'claude/supreme-ai-agent-os-deploy-2Txop'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy latest code to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+            cd ~/app
+            git fetch origin ${{ github.event.inputs.branch }} --quiet
+            git reset --hard origin/${{ github.event.inputs.branch }} --quiet
+            SRC=~/app
+            [ -d ~/app/supreme-ai-agent-os ] && SRC=~/app/supreme-ai-agent-os
+
+            docker cp $SRC/frontend/static/index.html       supreme-api:/app/frontend/static/
+            docker cp $SRC/backend/app/main.py              supreme-api:/app/backend/app/
+            docker cp $SRC/backend/app/secrets_store.py     supreme-api:/app/backend/app/
+            docker cp $SRC/backend/app/agents/mining_agent.py  supreme-api:/app/backend/app/agents/
+            docker cp $SRC/backend/app/agents/node_runner.py   supreme-api:/app/backend/app/agents/
+            docker cp $SRC/backend/app/agents/aws_manager.py   supreme-api:/app/backend/app/agents/
+            docker cp $SRC/backend/app/agents/platform_signup.py supreme-api:/app/backend/app/agents/
+            docker cp $SRC/backend/app/middleware              supreme-api:/app/backend/app/
+
+            echo "Deploy complete — $(git rev-parse --short HEAD)"
+            curl -sf http://localhost:8000/health | python3 -c "import sys,json; d=json.load(sys.stdin); print('Health:', d['status'], '| Uptime:', round(d['heartbeat']['uptime_s']),'s')"
