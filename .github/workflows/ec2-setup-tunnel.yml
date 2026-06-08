@@ -1,0 +1,65 @@
+name: EC2 Setup Cloudflare Tunnel
+
+on:
+  workflow_dispatch:
+    inputs:
+      tunnel_name:
+        description: 'Cloudflare tunnel name'
+        required: false
+        default: 'supreme-os'
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup persistent Cloudflare tunnel on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+            # Install cloudflared if not present
+            if ! command -v cloudflared &>/dev/null; then
+              wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /usr/local/bin/cloudflared
+              chmod +x /usr/local/bin/cloudflared
+            fi
+            echo "cloudflared $(cloudflared --version)"
+
+            # Kill any existing tunnels
+            pkill -f "cloudflared tunnel" 2>/dev/null || true
+
+            # Start tunnel as background service writing URL to file
+            nohup cloudflared tunnel --url http://localhost:8000 \
+              --logfile /tmp/cf-tunnel.log \
+              2>&1 &
+            echo "Tunnel PID: $!"
+            sleep 8
+
+            # Extract URL
+            URL=$(grep -oP 'https://[a-z0-9-]+\.trycloudflare\.com' /tmp/cf-tunnel.log | head -1)
+            if [ -n "$URL" ]; then
+              echo "$URL" > /tmp/cf-tunnel-url.txt
+              echo "TUNNEL_URL=$URL"
+              echo ""
+              echo "✅ Tunnel active: $URL"
+              echo ""
+              echo "Add to Claude Code ~/.claude/settings.json:"
+              echo '{'
+              echo '  "mcpServers": {'
+              echo '    "supreme-os": {'
+              echo '      "type": "http",'
+              echo "      \"url\": \"$URL/mcp\""
+              echo '    }'
+              echo '  }'
+              echo '}'
+            else
+              echo "⚠ Could not extract tunnel URL — check /tmp/cf-tunnel.log"
+              tail -20 /tmp/cf-tunnel.log
+            fi
+
+            # Also write to app data for the UI to show
+            mkdir -p /app/data/.supreme-os
+            echo "$URL" > /app/data/.supreme-os/tunnel-url.txt 2>/dev/null || true
