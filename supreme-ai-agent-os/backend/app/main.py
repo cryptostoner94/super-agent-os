@@ -196,6 +196,22 @@ def get_skills():
 def get_connectors():
     return connector_status()
 
+@app.get("/bounty-platforms")
+@app.get("/api/bounty-platforms")
+def get_bounty_platforms():
+    """Return bounty platform connector registry with mode, status, and credential state."""
+    from backend.app.connectors.status import bounty_platform_status
+    return {"platforms": bounty_platform_status()}
+
+@app.get("/api/connectors/all")
+def get_all_connectors():
+    """Return all connectors (integrations + bounty platforms)."""
+    from backend.app.connectors.status import bounty_platform_status
+    return {
+        "integrations": connector_status(),
+        "bounty_platforms": bounty_platform_status(),
+    }
+
 @app.get("/state")
 def state():
     return load_state()

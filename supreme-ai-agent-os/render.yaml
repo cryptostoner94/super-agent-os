@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: supreme-ai-backend
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: SUPREME_DB_DIR
+        value: /tmp/supreme-state
+      - key: SUPREME_ALLOW_TERMINAL
+        value: "true"
+      - key: GUARDRAILS_STRICT
+        value: "true"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+    autoDeploy: true
+    plan: free
+
+  - type: web
+    name: supreme-ai-frontend
+    env: node
+    rootDir: frontend/next-app
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: supreme-ai-backend
+          type: web
+          property: host
+    autoDeploy: true
+    plan: free
