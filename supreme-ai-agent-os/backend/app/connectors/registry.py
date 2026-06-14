@@ -31,7 +31,7 @@ def _load(cid: str):
     try:
         mod = importlib.import_module(f"backend.app.connectors.platforms.{cid}")
         return mod
-    except Exception as e:
+    except ImportError:
         return None
 
 def all_connectors() -> list[dict]:

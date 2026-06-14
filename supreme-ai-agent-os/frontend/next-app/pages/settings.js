@@ -12,10 +12,14 @@ export default function SettingsPage() {
   useEffect(() => { if (settings) setLocal(settings) }, [settings])
 
   async function save() {
-    await post('/settings', local)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-    mutate()
+    try {
+      await post('/settings', local)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+      mutate()
+    } catch (_err) {
+      // save failure is non-fatal; user can retry
+    }
   }
 
   return (
@@ -37,7 +41,7 @@ export default function SettingsPage() {
                 </button>
               ) : (
                 <input
-                  value={String(v)}
+                  value={v == null ? '' : String(v)}
                   onChange={e => {
                     const val = e.target.value
                     setLocal(p => ({ ...p, [k]: isNaN(Number(val)) ? val : Number(val) }))
@@ -61,12 +65,20 @@ export default function SettingsPage() {
           <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text)' }}>System Diagnostics</h2>
           {startup && (
             <div className="space-y-2">
-              {Object.entries(startup).filter(([k]) => k !== '_summary').map(([k, v]) => (
-                <div key={k} className="flex items-center justify-between p-2 rounded-lg" style={{ background: 'var(--surface2)' }}>
-                  <span className="text-xs text-gray-400 capitalize">{k.replace(/_/g, ' ')}</span>
-                  <Badge label={v.ok ? 'ok' : v.degraded ? 'degraded' : 'err'} type={v.ok ? 'green' : v.degraded ? 'yellow' : 'red'} />
-                </div>
-              ))}
+              {Object.entries(startup).filter(([k]) => k !== '_summary').map(([k, v]) => {
+                const isObj = v !== null && typeof v === 'object'
+                const isOk = isObj && v.ok
+                const isDegraded = isObj && !v.ok && v.degraded
+                return (
+                  <div key={k} className="flex items-center justify-between p-2 rounded-lg" style={{ background: 'var(--surface2)' }}>
+                    <span className="text-xs text-gray-400 capitalize">{k.replace(/_/g, ' ')}</span>
+                    <Badge
+                      label={isOk ? 'ok' : isDegraded ? 'degraded' : 'err'}
+                      type={isOk ? 'green' : isDegraded ? 'yellow' : 'red'}
+                    />
+                  </div>
+                )
+              })}
               {startup._summary && (
                 <p className="text-xs text-gray-500 mt-2">
                   {startup._summary.ok}/{startup._summary.total} checks passing

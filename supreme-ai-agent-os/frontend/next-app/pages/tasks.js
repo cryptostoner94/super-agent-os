@@ -20,6 +20,8 @@ export default function TasksPage() {
       await post('/tasks', { prompt, agent_id: agentId })
       setPrompt('')
       await mutate()
+    } catch (_err) {
+      // task creation failure shown in task list; not fatal
     } finally {
       setLoading(false)
     }

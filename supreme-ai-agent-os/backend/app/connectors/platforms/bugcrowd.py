@@ -34,13 +34,13 @@ PROGRAMS_URL = "https://bugcrowd.com/engagements"
 DASHBOARD_URL = "https://bugcrowd.com/user/dashboard"
 
 
-async def fetch_programs(session_state: dict | None = None) -> dict:
+async def fetch_programs() -> dict:
     """
     Fetch available bug bounty programs from Bugcrowd.
     Returns list of programs with title, scope, and reward info.
-    Requires browser session (email/password or pre-saved state).
+    Requires BUGCROWD_EMAIL and BUGCROWD_PASSWORD env vars for browser session.
     """
-    from backend.app.browser import fetch_page, login_session, structured_extract
+    from backend.app.browser import login_session, structured_extract
     email = os.getenv("BUGCROWD_EMAIL", "")
     password = os.getenv("BUGCROWD_PASSWORD", "")
 

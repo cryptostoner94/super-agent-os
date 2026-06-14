@@ -59,16 +59,16 @@ export default function Overview() {
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Soul Quality</p>
               <div className="flex items-center gap-2">
                 <div className="h-2 rounded-full bg-purple-900 overflow-hidden" style={{ width: 120 }}>
-                  <div className="h-full bg-accent rounded-full" style={{ width: `${health.soul.rolling_quality * 100}%`, background: 'var(--accent)' }} />
+                  <div className="h-full bg-accent rounded-full" style={{ width: `${(health.soul.rolling_quality ?? 0) * 100}%`, background: 'var(--accent)' }} />
                 </div>
                 <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
-                  {(health.soul.rolling_quality * 100).toFixed(0)}%
+                  {((health.soul.rolling_quality ?? 0) * 100).toFixed(0)}%
                 </span>
               </div>
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Cycle</p>
-              <p className="text-xl font-bold text-gray-300">{health.soul.cycle}</p>
+              <p className="text-xl font-bold text-gray-300">{health.soul.cycle ?? 0}</p>
             </div>
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Memory DB</p>
