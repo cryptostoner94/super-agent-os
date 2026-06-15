@@ -116,6 +116,19 @@ async def _soul_pulse():
     await hub.broadcast({"type": "soul_pulse", "data": sig})
 
 
+async def _hf_keepalive_loop():
+    """Ping /health every 25 min so HuggingFace Space never hits the 48h inactivity sleep threshold."""
+    await asyncio.sleep(90)
+    port = int(os.getenv("PORT", "7860"))
+    while True:
+        try:
+            async with httpx.AsyncClient() as _c:
+                await _c.get(f"http://localhost:{port}/health", timeout=8)
+        except Exception:
+            pass
+        await asyncio.sleep(25 * 60)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _graph
@@ -128,9 +141,11 @@ async def lifespan(app: FastAPI):
         await log_event("startup", {"graph": "unavailable", "reason": str(e)})
     _heartbeat.register(_soul_pulse)
     hb = asyncio.create_task(_heartbeat.run_forever())
+    ka = asyncio.create_task(_hf_keepalive_loop())
     yield
     _heartbeat.stop()
     hb.cancel()
+    ka.cancel()
 
 
 app = FastAPI(title="Supreme AI Agent OS", version="2.0.0", lifespan=lifespan)
