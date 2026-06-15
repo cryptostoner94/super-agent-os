@@ -89,7 +89,7 @@ export default function TasksPage() {
                     {t.agent_id} · {t.id} · {t.started ? `${Math.round((t.finished || Date.now() / 1000) - t.started)}s` : 'queued'}
                   </p>
                 </div>
-                {t.result?.error && (
+                {t.result && t.result.error && (
                   <span className="text-xs text-red-400 shrink-0 max-w-32 truncate">{t.result.error}</span>
                 )}
               </div>

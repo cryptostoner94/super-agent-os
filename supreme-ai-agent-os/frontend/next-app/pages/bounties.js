@@ -32,16 +32,18 @@ export default function BountiesPage() {
     }
   }
 
+  const platformList = platforms?.platforms || []
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <PageHeader title="🎯 Bounties & Opportunities" subtitle={`${opportunities.length} active opportunities`} />
 
       {/* Platform status */}
-      {platforms?.platforms && (
+      {platformList.length > 0 && (
         <Card className="mb-6">
           <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text)' }}>Platform Connectors</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
-            {platforms.platforms.map(p => (
+            {platformList.map(p => (
               <div key={p.id} className="p-3 rounded-xl border text-center" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
                 <p className="text-xs font-semibold text-gray-300 mb-1">{p.name}</p>
                 <Badge label={p.mode?.replace('_', ' ')} type={p.has_credentials ? 'green' : 'yellow'} />

@@ -69,7 +69,7 @@ export default function ConnectorsPage() {
                 → {p.url?.replace('https://', '')}
               </a>
             </div>
-            {p.auth_env?.length > 0 && (
+            {p.auth_env && p.auth_env.length > 0 && (
               <div className="mt-2 pt-2 border-t text-xs text-gray-600 flex flex-wrap gap-2" style={{ borderColor: 'var(--border)' }}>
                 <span>Required env:</span>
                 {p.auth_env.map(k => (

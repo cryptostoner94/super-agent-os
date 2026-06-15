@@ -52,7 +52,7 @@ export default function Overview() {
       </div>
 
       {/* Soul + Heartbeat */}
-      {health?.soul && (
+      {health && health.soul && (
         <Card className="mb-6">
           <div className="flex flex-wrap gap-6">
             <div>
