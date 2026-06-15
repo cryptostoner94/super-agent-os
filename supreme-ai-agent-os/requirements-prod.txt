@@ -1,0 +1,36 @@
+# Minimal production requirements for Render/Railway deployment
+# Heavy optional packages (playwright, streamlit, boto3, pandas) excluded
+
+# ── Core API ──────────────────────────────────────────────────
+fastapi==0.115.12
+uvicorn[standard]==0.34.2
+pydantic==2.11.5
+python-dotenv==1.1.0
+python-multipart==0.0.20
+websockets>=13
+httpx>=0.27
+
+# ── Data / Artifacts ──────────────────────────────────────────
+requests==2.32.3
+aiofiles>=23.0
+
+# ── LangGraph / LangChain (agent orchestration) ───────────────
+langgraph>=0.2.50
+langchain>=0.3
+langchain-core>=0.3
+langchain-community>=0.3
+
+# ── Memory: SQLite async ──────────────────────────────────────
+sqlalchemy[asyncio]>=2.0
+aiosqlite>=0.20
+
+# ── Web scraping (browser fallback) ──────────────────────────
+beautifulsoup4>=4.12
+lxml>=5.0
+
+# ── Metrics / Logging ─────────────────────────────────────────
+prometheus-client>=0.20
+structlog>=24
+
+# ── Payments ─────────────────────────────────────────────────
+stripe>=10.0
