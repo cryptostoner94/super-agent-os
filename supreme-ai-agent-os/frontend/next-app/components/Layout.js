@@ -1,15 +1,16 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { get } from '../lib/api'
+import useWebSocket from '../lib/useWebSocket'
 
 const NAV = [
   { href: '/',           icon: '⚡', label: 'Overview' },
   { href: '/agents',     icon: '🤖', label: 'Agents' },
   { href: '/tasks',      icon: '📋', label: 'Tasks' },
   { href: '/bounties',   icon: '🎯', label: 'Bounties' },
-  { href: '/browser',    icon: '🌐', label: 'Browser Sessions' },
-  { href: '/terminal',   icon: '💻', label: 'Terminal Jobs' },
+  { href: '/browser',    icon: '🌐', label: 'Browser' },
+  { href: '/terminal',   icon: '💻', label: 'Terminal' },
   { href: '/approvals',  icon: '✅', label: 'Approvals' },
   { href: '/revenue',    icon: '💰', label: 'Revenue' },
   { href: '/payments',   icon: '💳', label: 'Payments' },
@@ -18,9 +19,19 @@ const NAV = [
   { href: '/settings',   icon: '⚙️', label: 'Settings' },
 ]
 
-function StatusDot({ ok }) {
+const STATUS_COLORS = {
+  running: '#60a5fa',
+  completed: '#22c55e',
+  failed: '#ef4444',
+  queued: '#a78bfa',
+}
+
+function StatusDot({ ok, pulse }) {
   return (
-    <span className={`inline-block w-2 h-2 rounded-full ${ok ? 'bg-success' : 'bg-danger'} shadow-sm`} />
+    <span
+      className={`inline-block w-2 h-2 rounded-full shadow-sm ${pulse ? 'animate-pulse' : ''}`}
+      style={{ background: ok ? '#22c55e' : '#ef4444' }}
+    />
   )
 }
 
@@ -28,6 +39,8 @@ export default function Layout({ children }) {
   const router = useRouter()
   const [status, setStatus] = useState(null)
   const [collapsed, setCollapsed] = useState(false)
+  const [liveEvents, setLiveEvents] = useState([])
+  const [wsConnected, setWsConnected] = useState(false)
 
   useEffect(() => {
     get('/health').then(setStatus).catch(() => setStatus({ status: 'error' }))
@@ -36,6 +49,20 @@ export default function Layout({ children }) {
     }, 15000)
     return () => clearInterval(t)
   }, [])
+
+  useWebSocket(useCallback((msg) => {
+    setWsConnected(true)
+    if (msg.type === 'task_update') {
+      const d = msg.data || {}
+      setLiveEvents(prev => [{
+        id: d.id,
+        status: d.status,
+        ts: Date.now(),
+      }, ...prev].slice(0, 4))
+    }
+  }, []))
+
+  const apiOk = status?.status === 'ok'
 
   return (
     <div className="flex h-screen" style={{ background: 'var(--bg)' }}>
@@ -49,6 +76,7 @@ export default function Layout({ children }) {
           <button
             onClick={() => setCollapsed(c => !c)}
             className="glow-dot shrink-0 cursor-pointer border-0 bg-transparent"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           />
           {!collapsed && (
             <span className="font-bold text-sm tracking-tight" style={{ color: 'var(--accent)' }}>
@@ -79,13 +107,37 @@ export default function Layout({ children }) {
           })}
         </nav>
 
-        {/* Status footer */}
-        {!collapsed && (
-          <div className="p-3 border-t text-xs text-gray-500 flex items-center gap-2" style={{ borderColor: 'var(--border)' }}>
-            <StatusDot ok={status?.status === 'ok'} />
-            <span>{status?.status === 'ok' ? 'API Online' : 'API Offline'}</span>
+        {/* Live activity feed (only when expanded) */}
+        {!collapsed && liveEvents.length > 0 && (
+          <div className="px-3 pb-2 border-t" style={{ borderColor: 'var(--border)' }}>
+            <p className="text-xs text-gray-600 uppercase tracking-wider mt-2 mb-1">Live Activity</p>
+            {liveEvents.map((e, i) => (
+              <div key={i} className="flex items-center gap-2 py-0.5">
+                <span
+                  className="w-1.5 h-1.5 rounded-full shrink-0"
+                  style={{ background: STATUS_COLORS[e.status] || '#6b7280' }}
+                />
+                <span className="text-xs text-gray-500 truncate">
+                  Task #{e.id} → <span style={{ color: STATUS_COLORS[e.status] || '#6b7280' }}>{e.status}</span>
+                </span>
+              </div>
+            ))}
           </div>
         )}
+
+        {/* Status footer */}
+        <div
+          className="p-3 border-t text-xs flex items-center gap-2"
+          style={{ borderColor: 'var(--border)', color: 'var(--text-muted)' }}
+        >
+          <StatusDot ok={apiOk} pulse={apiOk} />
+          {!collapsed && (
+            <span className="text-gray-500">
+              {apiOk ? 'API Online' : 'API Offline'}
+              {wsConnected && apiOk && <span className="ml-1 text-green-700">· WS ✓</span>}
+            </span>
+          )}
+        </div>
       </aside>
 
       {/* Main content */}

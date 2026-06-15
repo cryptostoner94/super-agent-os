@@ -1,10 +1,13 @@
 """
 LLM Provider Router — local-first, cloud fallback.
 
-Priority: Ollama (auto-detect) → XAI → Gemini → Bedrock → OpenAI → Groq → OpenRouter
+Priority: Ollama (auto-detect) → Sandbox/Custom OpenAI → XAI → Gemini → Bedrock → OpenAI → Groq → OpenRouter
+
+Supports OPENAI_BASE_URL for custom/proxy endpoints (e.g., Manus sandbox, Azure OpenAI, LiteLLM, etc.)
 """
 from __future__ import annotations
 import json
+import os
 import requests
 from typing import Dict
 from backend.app.core.config import env
@@ -36,6 +39,39 @@ def _ollama_smart(prompt: str) -> Dict[str, str]:
     if "error" in prov or "unavailable" in prov or "local_no_llm" in prov:
         raise ProviderError(result.get("text", "Ollama unavailable"))
     return result
+
+
+def _openai_compat(prompt: str) -> Dict[str, str]:
+    """
+    OpenAI-compatible endpoint supporting custom base URLs.
+    Reads OPENAI_BASE_URL (or OPENAI_API_BASE) for proxy/custom endpoints.
+    Falls back to api.openai.com if not set.
+    """
+    key = env("OPENAI_API_KEY") or os.environ.get("OPENAI_API_KEY", "")
+    if not key:
+        raise ProviderError("OPENAI_API_KEY missing")
+
+    # Support both OPENAI_BASE_URL and OPENAI_API_BASE (common aliases)
+    base_url = (
+        env("OPENAI_BASE_URL")
+        or os.environ.get("OPENAI_BASE_URL", "")
+        or os.environ.get("OPENAI_API_BASE", "")
+        or "https://api.openai.com/v1"
+    ).rstrip("/")
+
+    model = env("OPENAI_MODEL") or "gpt-4o-mini"
+    url = f"{base_url}/chat/completions"
+
+    r = requests.post(
+        url,
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        json={"model": model, "messages": [{"role": "user", "content": prompt}], "temperature": 0.35},
+        timeout=90,
+    )
+    r.raise_for_status()
+    text = r.json()["choices"][0]["message"]["content"]
+    provider_label = "openai_proxy" if "openai.com" not in base_url else "openai"
+    return {"provider": provider_label, "text": text, "model": model, "base_url": base_url}
 
 
 def _xai(prompt: str) -> Dict[str, str]:
@@ -86,21 +122,6 @@ def _bedrock(prompt: str) -> Dict[str, str]:
     return {"provider": "bedrock", "text": data["content"][0]["text"]}
 
 
-def _openai(prompt: str) -> Dict[str, str]:
-    key = env("OPENAI_API_KEY")
-    if not key:
-        raise ProviderError("OPENAI_API_KEY missing")
-    r = requests.post(
-        "https://api.openai.com/v1/chat/completions",
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-        json={"model": env("OPENAI_MODEL", "gpt-4o-mini"),
-              "messages": [{"role": "user", "content": prompt}], "temperature": 0.35},
-        timeout=90,
-    )
-    r.raise_for_status()
-    return {"provider": "openai", "text": r.json()["choices"][0]["message"]["content"]}
-
-
 def _groq(prompt: str) -> Dict[str, str]:
     key = env("GROQ_API_KEY")
     if not key:
@@ -131,14 +152,17 @@ def _openrouter(prompt: str) -> Dict[str, str]:
     return {"provider": "openrouter", "text": r.json()["choices"][0]["message"]["content"]}
 
 
-_PROVIDERS = [_ollama_smart, _xai, _gemini, _bedrock, _openai, _groq, _openrouter]
+# _openai_compat handles both standard OpenAI and custom base URLs
+# It replaces the old _openai function and is tried before cloud-specific providers
+_PROVIDERS = [_ollama_smart, _openai_compat, _xai, _gemini, _bedrock, _groq, _openrouter]
 
 
 def complete(prompt: str) -> Dict[str, str]:
     """
     Local-first LLM router.
     1. Ollama (auto-detect installed models)
-    2. XAI → Gemini → Bedrock → OpenAI → Groq → OpenRouter
+    2. OpenAI / OpenAI-compatible proxy (OPENAI_BASE_URL)
+    3. XAI → Gemini → Bedrock → Groq → OpenRouter
     """
     errors: list[str] = []
     for fn in _PROVIDERS:
@@ -152,7 +176,7 @@ def complete(prompt: str) -> Dict[str, str]:
         "text": (
             "No LLM available. To enable:\n"
             "  • Local: docker compose up ollama  (free, no API key)\n"
-            "  • Cloud: set OPENAI_API_KEY, GROQ_API_KEY, or GEMINI_API_KEY in .env\n\n"
+            "  • Cloud: set OPENAI_API_KEY (+ optionally OPENAI_BASE_URL), GROQ_API_KEY, or GEMINI_API_KEY in .env\n\n"
             "Errors: " + " | ".join(errors[-3:])
         ),
     }

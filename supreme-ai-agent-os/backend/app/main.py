@@ -746,6 +746,82 @@ def inception_classify(prompt: str):
     agent = classify_agent(prompt)
     return {"prompt": prompt[:200], "intent": intent, "agent": agent}
 
+
+# ── Agent Performance ───────────────────────────────────────────────────────
+@app.get("/agents/performance")
+@app.get("/api/agents/performance")
+async def agents_performance():
+    """Return per-agent performance stats derived from memory outcomes."""
+    outcomes = await get_outcomes(limit=500)
+    perf: dict[str, dict] = {}
+    for o in outcomes:
+        a = o.get("agent", "unknown")
+        if a not in perf:
+            perf[a] = {"runs": 0, "total_score": 0.0, "last_run": 0}
+        perf[a]["runs"] += 1
+        perf[a]["total_score"] += float(o.get("score", 0.5))
+        ts = o.get("created", 0)
+        if ts and ts > perf[a]["last_run"]:
+            perf[a]["last_run"] = ts
+    result = {}
+    for a, d in perf.items():
+        result[a] = {
+            "runs": d["runs"],
+            "avg_score": round(d["total_score"] / d["runs"], 3) if d["runs"] else 0,
+            "last_run": d["last_run"],
+        }
+    return result
+
+
+# ── Bounties alias (frontend expects /bounties) ───────────────────────────────
+@app.get("/bounties")
+@app.get("/api/bounties")
+def get_bounties():
+    """Alias for /rewards — returns all income opportunities."""
+    return {"opportunities": _REWARDS, "count": len(_REWARDS)}
+
+
+@app.get("/api/rewards")
+def get_rewards_alias():
+    """Alias for /rewards."""
+    return {"opportunities": _REWARDS, "count": len(_REWARDS)}
+
+
+# ── Task cancellation ─────────────────────────────────────────────────────────
+@app.post("/tasks/{task_id}/cancel")
+async def cancel_task(task_id: str):
+    task = _tasks.get(task_id)
+    if not task:
+        raise HTTPException(404, "task not found")
+    if task["status"] in ("completed", "failed"):
+        return {"ok": False, "reason": f"task already {task['status']}"}
+    task["status"] = "cancelled"
+    task["finished"] = time.time()
+    await log_event("task_cancelled", {"id": task_id})
+    return {"ok": True, "task": task}
+
+
+# ── System status (detailed) ──────────────────────────────────────────────────
+@app.get("/system/status")
+async def system_status():
+    """Detailed system status for the dashboard."""
+    checks = await _startup_check()
+    caps = capabilities()
+    return {
+        "status": "ok",
+        "version": "2.0.0",
+        "checks": checks,
+        "capabilities": caps,
+        "tasks": {
+            "total": len(_tasks),
+            "running": sum(1 for t in _tasks.values() if t["status"] == "running"),
+            "completed": sum(1 for t in _tasks.values() if t["status"] == "completed"),
+            "failed": sum(1 for t in _tasks.values() if t["status"] == "failed"),
+        },
+        "agents": len(AGENTS),
+        "skills": len(SKILLS),
+    }
+
 # ── Agent Run ─────────────────────────────────────────────────────────────────
 @app.post("/agent/run")
 async def agent_run(req: AgentRequest):
@@ -754,7 +830,8 @@ async def agent_run(req: AgentRequest):
             REQUEST_COUNT.inc()
         except Exception:
             pass
-    result = run_agent(req.prompt, req.raw_data, req.file_text, req.agent_id)
+    # Run the synchronous inception call in a thread pool to avoid blocking the event loop
+    result = await asyncio.to_thread(run_agent, req.prompt, req.raw_data, req.file_text, req.agent_id)
     # Soul score already included by inception layer; add it if missing
     if "soul_score" not in result:
         wu = {

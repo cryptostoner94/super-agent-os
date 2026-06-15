@@ -53,10 +53,28 @@ export default function AgentsPage() {
 
       {selected && (
         <Card className="mb-6">
-          <h3 className="font-semibold mb-3" style={{ color: AGENT_COLORS[selected.id] || '#a78bfa' }}>
-            {selected.icon} {selected.name}
-          </h3>
-          <p className="text-sm text-gray-400 mb-4">{selected.role}</p>
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <h3 className="font-semibold" style={{ color: AGENT_COLORS[selected.id] || '#a78bfa' }}>
+                {selected.icon} {selected.name}
+              </h3>
+              <p className="text-sm text-gray-400 mt-1">{selected.role}</p>
+            </div>
+            {perf[selected.id] && (
+              <div className="flex gap-4 text-right">
+                <div>
+                  <p className="text-xs text-gray-600">Runs</p>
+                  <p className="text-sm font-bold" style={{ color: 'var(--accent)' }}>{perf[selected.id].runs}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-600">Avg Score</p>
+                  <p className="text-sm font-bold" style={{ color: perf[selected.id].avg_score > 0.7 ? '#22c55e' : '#f59e0b' }}>
+                    {(perf[selected.id].avg_score * 100).toFixed(0)}%
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
           <div className="flex gap-2">
             <input
               className="flex-1 rounded-lg px-3 py-2 text-sm border"
@@ -72,17 +90,54 @@ export default function AgentsPage() {
               className="px-4 py-2 rounded-lg text-sm font-semibold disabled:opacity-50"
               style={{ background: 'var(--accent-dark)', color: '#fff' }}
             >
-              {loading ? '…' : '▶ Run'}
+              {loading ? '⏳' : '▶ Run'}
             </button>
           </div>
           {result && (
             <div className="mt-4 p-4 rounded-xl border text-sm" style={{ background: 'var(--surface2)', borderColor: 'var(--border)' }}>
-              {result.error
-                ? <p className="text-red-400">{result.error}</p>
-                : <p className="text-gray-300 whitespace-pre-wrap">{(result.answer || '').slice(0, 1000)}</p>
-              }
+              {result.error ? (
+                <p className="text-red-400">{result.error}</p>
+              ) : (
+                <div>
+                  <div className="flex gap-2 flex-wrap mb-2">
+                    {result.intent && <Badge label={result.intent} type="blue" />}
+                    {result.provider && <Badge label={result.provider} type="gray" />}
+                    {result.soul_passed != null && (
+                      <Badge label={`soul ${result.soul_passed ? '✓' : '✗'} ${result.soul_score != null ? (result.soul_score * 100).toFixed(0) + '%' : ''}`} type={result.soul_passed ? 'green' : 'red'} />
+                    )}
+                  </div>
+                  <p className="text-gray-300 whitespace-pre-wrap leading-relaxed">{(result.answer || '').slice(0, 1200)}</p>
+                </div>
+              )}
             </div>
           )}
+        </Card>
+      )}
+
+      {/* Performance table */}
+      {Object.keys(perf).length > 0 && (
+        <Card>
+          <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--text)' }}>Agent Performance</h2>
+          <div className="space-y-2">
+            {Object.entries(perf).sort((a, b) => b[1].runs - a[1].runs).map(([id, p]) => (
+              <div key={id} className="flex items-center gap-3">
+                <span className="text-xs text-gray-400 w-28 truncate capitalize">{id.replace(/_/g, ' ')}</span>
+                <div className="flex-1 h-1.5 rounded-full bg-gray-800 overflow-hidden">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.min(100, p.avg_score * 100)}%`,
+                      background: p.avg_score > 0.7 ? '#22c55e' : p.avg_score > 0.4 ? '#f59e0b' : '#ef4444'
+                    }}
+                  />
+                </div>
+                <span className="text-xs font-bold w-10 text-right" style={{ color: 'var(--accent)' }}>{p.runs}x</span>
+                <span className="text-xs w-10 text-right" style={{ color: p.avg_score > 0.7 ? '#22c55e' : '#f59e0b' }}>
+                  {(p.avg_score * 100).toFixed(0)}%
+                </span>
+              </div>
+            ))}
+          </div>
         </Card>
       )}
     </div>

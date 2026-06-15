@@ -23,7 +23,11 @@ def _llm(role: str = "reason"):
     mode = os.getenv("LLM_MODE", "auto")
     if os.getenv("OPENAI_API_KEY"):
         from langchain_openai import ChatOpenAI
-        return ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
+        _oai_kwargs: dict = {"model": os.getenv("OPENAI_MODEL", "gpt-4o-mini"), "temperature": 0.2}
+        _base = os.getenv("OPENAI_BASE_URL") or os.getenv("OPENAI_API_BASE")
+        if _base:
+            _oai_kwargs["base_url"] = _base
+        return ChatOpenAI(**_oai_kwargs)
     if os.getenv("GEMINI_API_KEY"):
         from langchain_google_genai import ChatGoogleGenerativeAI
         return ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.2)
