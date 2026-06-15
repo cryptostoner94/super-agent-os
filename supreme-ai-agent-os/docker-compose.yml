@@ -12,7 +12,7 @@ services:
       - SUPREME_DB_DIR=/app/data/state
       - UAC_ROOT=/app/data/.supreme-os
       - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-http://ollama:11434}
-      - BROWSERLESS_URL=${BROWSERLESS_URL:-http://browserless:3000}
+      - BROWSERLESS_URL=${BROWSERLESS_URL:-ws://browserless:3000}
       - PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
       - PLAYWRIGHT_BROWSERS_PATH=0
       - PYTHONUNBUFFERED=1
@@ -66,12 +66,35 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/next-app/Dockerfile
+    container_name: supreme-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - supreme-net
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   browserless:
     image: browserless/chrome:latest
     container_name: supreme-browserless
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - MAX_CONCURRENT_SESSIONS=5
       - CONNECTION_TIMEOUT=60000

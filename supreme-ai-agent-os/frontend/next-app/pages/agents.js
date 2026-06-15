@@ -106,7 +106,7 @@ export default function AgentsPage() {
                       <Badge label={`soul ${result.soul_passed ? '✓' : '✗'} ${result.soul_score != null ? (result.soul_score * 100).toFixed(0) + '%' : ''}`} type={result.soul_passed ? 'green' : 'red'} />
                     )}
                   </div>
-                  <p className="text-gray-300 whitespace-pre-wrap leading-relaxed">{(result.answer || '').slice(0, 1200)}</p>
+                  <p className="text-gray-300 whitespace-pre-wrap leading-relaxed">{result.answer || ''}</p>
                 </div>
               )}
             </div>

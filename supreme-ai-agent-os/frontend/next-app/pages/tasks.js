@@ -5,16 +5,7 @@ import { Card, PageHeader, Badge, EmptyState } from '../components/Card'
 import useWebSocket from '../lib/useWebSocket'
 
 const STATUS_COLOR = { queued: 'purple', running: 'blue', completed: 'green', failed: 'red', cancelled: 'gray' }
-const AGENTS = [
-  { id: 'executive', label: '🧠 Executive' },
-  { id: 'planner', label: '📋 Planner' },
-  { id: 'researcher', label: '🔍 Researcher' },
-  { id: 'builder', label: '🔨 Builder' },
-  { id: 'bounty_hunter', label: '🎯 Bounty Hunter' },
-  { id: 'reward_scout', label: '💰 Reward Scout' },
-  { id: 'browser', label: '🌐 Browser' },
-  { id: 'monitor', label: '📡 Monitor' },
-]
+// Agents are now fetched from the backend registry via useSWR
 
 function TaskModal({ task, onClose }) {
   if (!task) return null
@@ -99,6 +90,7 @@ function TaskModal({ task, onClose }) {
 
 export default function TasksPage() {
   const { data: tasks = [], mutate } = useSWR('/tasks?limit=100', get, { refreshInterval: 5000 })
+  const { data: agents = [] } = useSWR('/agents', get)
   const [prompt, setPrompt] = useState('')
   const [agentId, setAgentId] = useState('executive')
   const [loading, setLoading] = useState(false)
@@ -169,7 +161,9 @@ export default function TasksPage() {
             className="rounded-lg px-3 py-2 text-sm border shrink-0"
             style={{ background: 'var(--surface2)', borderColor: 'var(--border)', color: 'var(--text)' }}
           >
-            {AGENTS.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
+            {agents.filter(a => a.visible !== false).map(a => (
+              <option key={a.id} value={a.id}>{a.icon} {a.name}</option>
+            ))}
           </select>
           <input
             value={prompt}

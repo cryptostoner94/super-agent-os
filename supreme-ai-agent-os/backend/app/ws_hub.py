@@ -8,6 +8,11 @@ class Hub:
     async def connect(self, ws: WebSocket):
         await ws.accept()
         async with self.lock: self.clients.add(ws)
+        try:
+            import time
+            await ws.send_text(json.dumps({"type": "connected", "data": {"time": time.time()}}))
+        except Exception:
+            pass
     def disconnect(self, ws: WebSocket):
         self.clients.discard(ws)
     async def broadcast(self, msg: dict):

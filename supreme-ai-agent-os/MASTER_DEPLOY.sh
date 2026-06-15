@@ -138,16 +138,16 @@ hdr "5. Start Core Services"
 docker compose up -d browserless ollama
 info "Waiting for Browserless (up to 30s)..."
 ELAPSED=0
-while ! curl -sf http://localhost:3000/pressure >/dev/null 2>&1; do
+while ! curl -sf http://localhost:3001/pressure >/dev/null 2>&1; do
   sleep 2; ELAPSED=$((ELAPSED+2))
   [[ $ELAPSED -ge 30 ]] && { warn "Browserless slow — continuing"; break; }
   printf "."
 done
 echo ""
-ok "Browserless: remote Chrome ready at http://localhost:3000"
+ok "Browserless: remote Chrome ready at http://localhost:3001"
 
-docker compose up -d api dashboard
-ok "Services started: api, dashboard, browserless, ollama"
+docker compose up -d api dashboard frontend
+ok "Services started: api, dashboard (streamlit), frontend (nextjs), browserless, ollama"
 
 hdr "6. Health Checks"
 
@@ -231,7 +231,9 @@ smoke "GET /soul"                "http://localhost:8000/soul"
 smoke "GET /identity"            "http://localhost:8000/identity"
 smoke "GET /user"                "http://localhost:8000/user"
 smoke "GET /settings"            "http://localhost:8000/settings"
-smoke "Dashboard :8501"          "http://localhost:8501"
+smoke "Dashboard (Streamlit) :8501" "http://localhost:8501"
+smoke "Dashboard (Next.js) :3000"   "http://localhost:3000"
+smoke "Browserless :3001"           "http://localhost:3001/pressure"
 
 echo ""
 info "Browser engine check:"
@@ -274,12 +276,14 @@ echo -e "    ${CYAN}Bounty:${NC}         http://localhost:8000/bounty/plans"
 echo -e "    ${CYAN}Metrics:${NC}        http://localhost:8000/metrics"
 echo ""
 echo    "  Services:"
-echo -e "    ${CYAN}Dashboard:${NC}      http://localhost:8501"
+echo -e "    ${CYAN}Dashboard (Next.js):${NC} http://localhost:3000"
+echo -e "    ${CYAN}Dashboard (Legacy):${NC}  http://localhost:8501"
 echo -e "    ${CYAN}Ollama:${NC}         http://localhost:11434"
 echo ""
 echo    "  Management:"
 echo    "    docker compose logs -f api               # stream API logs"
 echo    "    docker compose logs -f dashboard         # stream dashboard logs"
+echo    "    docker compose logs -f frontend          # stream nextjs logs"
 echo    "    docker compose exec ollama ollama list   # list models"
 echo    "    docker compose exec ollama ollama pull qwen2.5"
 echo    "    docker compose down                      # stop all"

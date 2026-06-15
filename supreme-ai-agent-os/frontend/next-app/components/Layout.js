@@ -51,6 +51,10 @@ export default function Layout({ children }) {
   }, [])
 
   useWebSocket(useCallback((msg) => {
+    if (msg.type === 'connected') {
+      setWsConnected(true)
+      return
+    }
     setWsConnected(true)
     if (msg.type === 'task_update') {
       const d = msg.data || {}
