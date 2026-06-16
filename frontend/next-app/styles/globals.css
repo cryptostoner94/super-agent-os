@@ -18,6 +18,33 @@
   --danger: #ef4444;
 }
 
+[data-theme="light"] {
+  --bg: #f4f4ff;
+  --surface: #ffffff;
+  --surface2: #f0f0fc;
+  --surface3: #e8e8f8;
+  --border: #d0d0e8;
+  --accent: #7c3aed;
+  --accent-dark: #5b21b6;
+  --text: #1e1b4b;
+  --muted: #6b7280;
+  --success: #16a34a;
+  --warning: #d97706;
+  --danger: #dc2626;
+}
+
+[data-theme="light"] .badge-green { background: #dcfce7; color: #166534; border-color: #86efac; }
+[data-theme="light"] .badge-yellow { background: #fef9c3; color: #854d0e; border-color: #fde047; }
+[data-theme="light"] .badge-red { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+[data-theme="light"] .badge-blue { background: #dbeafe; color: #1d4ed8; border-color: #93c5fd; }
+[data-theme="light"] .badge-purple { background: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
+[data-theme="light"] .badge-gray { background: #f3f4f6; color: #374151; border-color: #9ca3af; }
+
+.shadow-glow { box-shadow: 0 0 20px rgba(167, 139, 250, 0.15); }
+.glass { backdrop-filter: blur(12px); background: rgba(255, 255, 255, 0.05); }
+.gradient-hero { background: linear-gradient(135deg, #0d0d1a 0%, #1a0d2e 50%, #0d0d1a 100%); }
+[data-theme="light"] .gradient-hero { background: linear-gradient(135deg, #f4f4ff 0%, #ede9fe 50%, #f4f4ff 100%); }
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 html, body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; height: 100%; overflow-x: hidden; }
