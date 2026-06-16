@@ -55,12 +55,8 @@ export default function Layout({ children }) {
     return () => clearInterval(t)
   }, [])
 
-  // Close sheet on navigation
-  useEffect(() => {
-    setSheetOpen(false)
-  }, [router.pathname])
+  useEffect(() => { setSheetOpen(false) }, [router.pathname])
 
-  // Close sheet on back button / browser back
   useEffect(() => {
     if (!sheetOpen) return
     const onKey = (e) => { if (e.key === 'Escape') setSheetOpen(false) }
@@ -78,73 +74,98 @@ export default function Layout({ children }) {
 
   const apiOk = status?.status === 'ok'
 
-  const DesktopSidebar = () => (
-    <aside
-      className={`hidden md:flex flex-col shrink-0 border-r transition-all duration-200 ${collapsed ? 'w-14' : 'w-56'}`}
-      style={{ background: '#0d0d1a', borderColor: 'var(--border)' }}
-    >
-      <div className="flex items-center gap-2 px-3 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
-        <button
-          onClick={() => setCollapsed(c => !c)}
-          className="glow-dot shrink-0 cursor-pointer border-0 bg-transparent"
-          title={collapsed ? 'Expand' : 'Collapse'}
-        />
-        {!collapsed && (
-          <span className="font-bold text-sm tracking-tight" style={{ color: 'var(--accent)' }}>
-            Super Agent OS
-          </span>
-        )}
-      </div>
-      <nav className="flex-1 py-2 overflow-y-auto">
-        {NAV.map(({ href, icon, label }) => {
-          const active = router.pathname === href
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`flex items-center gap-3 px-3 py-2.5 mx-1 my-0.5 rounded-xl text-sm font-medium transition-colors ${
-                active ? 'bg-[#1e1e3a]' : 'text-gray-400 hover:bg-[#1a1a2e] hover:text-gray-200'
-              }`}
-              style={active ? { color: 'var(--accent)' } : {}}
-            >
-              <span className="text-lg shrink-0 leading-none">{icon}</span>
-              {!collapsed && <span>{label}</span>}
-            </Link>
-          )
-        })}
-      </nav>
-      {!collapsed && liveEvents.length > 0 && (
-        <div className="px-3 pb-2 border-t" style={{ borderColor: 'var(--border)' }}>
-          <p className="text-xs text-gray-600 uppercase tracking-wider mt-2 mb-1">Live</p>
-          {liveEvents.map((e, i) => (
-            <div key={i} className="flex items-center gap-2 py-0.5">
-              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: STATUS_COLORS[e.status] || '#6b7280' }} />
-              <span className="text-xs text-gray-500 truncate">
-                #{e.id} <span style={{ color: STATUS_COLORS[e.status] || '#6b7280' }}>{e.status}</span>
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="p-3 border-t text-xs flex items-center gap-2" style={{ borderColor: 'var(--border)' }}>
-        <StatusDot ok={apiOk} pulse={apiOk} />
-        {!collapsed && (
-          <span className="text-gray-500">
-            {apiOk ? 'API Online' : 'API Offline'}
-            {wsConnected && apiOk && <span className="ml-1 text-green-700">· WS ✓</span>}
-          </span>
-        )}
-      </div>
-    </aside>
-  )
-
   return (
     <div className="flex" style={{ background: 'var(--bg)', height: '100dvh' }}>
-      <DesktopSidebar />
+
+      {/* ── Desktop sidebar — always visible, collapses to icon-only strip ── */}
+      <aside
+        className="hidden md:flex flex-col shrink-0 border-r transition-all duration-200"
+        style={{
+          background: '#0d0d1a',
+          borderColor: 'var(--border)',
+          width: collapsed ? '64px' : '220px',
+        }}
+      >
+        {/* Burger toggle header */}
+        <div
+          className="flex items-center border-b shrink-0"
+          style={{
+            borderColor: 'var(--border)',
+            height: '56px',
+            padding: collapsed ? '0' : '0 12px',
+            justifyContent: collapsed ? 'center' : 'space-between',
+          }}
+        >
+          <button
+            onClick={() => setCollapsed(c => !c)}
+            className="flex flex-col items-center justify-center gap-[5px] w-9 h-9 rounded-lg hover:bg-[#1a1a2e] transition-colors"
+            style={{ border: 'none', background: 'none', cursor: 'pointer', flexShrink: 0 }}
+            aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}
+          >
+            <span className="block w-5 h-[2px] rounded-full" style={{ background: 'var(--accent)' }} />
+            <span className="block w-5 h-[2px] rounded-full" style={{ background: 'var(--accent)' }} />
+            <span className="block w-5 h-[2px] rounded-full" style={{ background: 'var(--accent)' }} />
+          </button>
+          {!collapsed && (
+            <span className="font-bold text-sm tracking-tight ml-2" style={{ color: 'var(--accent)' }}>
+              Super Agent OS
+            </span>
+          )}
+        </div>
+
+        {/* Nav items */}
+        <nav className="flex-1 overflow-y-auto py-2">
+          {NAV.map(({ href, icon, label }) => {
+            const active = router.pathname === href
+            return (
+              <Link
+                key={href}
+                href={href}
+                title={collapsed ? label : undefined}
+                className="flex items-center mx-1 my-0.5 rounded-xl transition-colors"
+                style={{
+                  gap: collapsed ? 0 : '10px',
+                  padding: collapsed ? '10px 0' : '10px 12px',
+                  justifyContent: collapsed ? 'center' : 'flex-start',
+                  background: active ? '#1e1e3a' : 'transparent',
+                  color: active ? 'var(--accent)' : '#9ca3af',
+                }}
+              >
+                {/* Icon — larger when collapsed so it's readable */}
+                <span style={{ fontSize: collapsed ? '22px' : '18px', lineHeight: 1, flexShrink: 0 }}>
+                  {icon}
+                </span>
+                {!collapsed && (
+                  <span className="text-sm font-medium">{label}</span>
+                )}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Status footer */}
+        <div
+          className="border-t shrink-0 flex items-center"
+          style={{
+            borderColor: 'var(--border)',
+            padding: collapsed ? '12px 0' : '10px 14px',
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            gap: '8px',
+          }}
+        >
+          <StatusDot ok={apiOk} pulse={apiOk} />
+          {!collapsed && (
+            <span className="text-xs text-gray-500">
+              {apiOk ? 'API Online' : 'API Offline'}
+              {wsConnected && apiOk && <span className="ml-1 text-green-700">· WS ✓</span>}
+            </span>
+          )}
+        </div>
+      </aside>
 
       {/* ── Main area ── */}
       <div className="flex-1 flex flex-col min-h-0 min-w-0">
-        {/* Page content — full height on mobile, bottom-padded for nav bar */}
+        {/* Page content */}
         <main
           className="flex-1 overflow-y-auto"
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 64px)' }}
@@ -152,7 +173,7 @@ export default function Layout({ children }) {
           {children}
         </main>
 
-        {/* ── Mobile bottom nav (5 tabs, no top bar) ── */}
+        {/* ── Mobile bottom nav ── */}
         <nav
           className="md:hidden fixed bottom-0 left-0 right-0 flex border-t"
           style={{
@@ -177,7 +198,6 @@ export default function Layout({ children }) {
               </Link>
             )
           })}
-          {/* More tab */}
           <button
             onClick={() => setSheetOpen(true)}
             className="flex-1 flex flex-col items-center justify-center gap-0.5"
@@ -190,7 +210,7 @@ export default function Layout({ children }) {
         </nav>
       </div>
 
-      {/* ── Bottom sheet (slides up from bottom) ── */}
+      {/* ── Mobile bottom sheet ── */}
       {sheetOpen && (
         <div
           className="md:hidden fixed inset-0 z-50 flex flex-col justify-end"
@@ -212,12 +232,9 @@ export default function Layout({ children }) {
             aria-modal="true"
             aria-label="Navigation"
           >
-            {/* Handle bar */}
             <div className="flex justify-center pt-3 pb-1">
               <div className="w-10 h-1 rounded-full bg-gray-700" />
             </div>
-
-            {/* Status row */}
             <div className="flex items-center justify-between px-5 py-2 mb-1">
               <span className="font-bold text-sm" style={{ color: 'var(--accent)' }}>Super Agent OS</span>
               <div className="flex items-center gap-2">
@@ -228,16 +245,14 @@ export default function Layout({ children }) {
                 </span>
               </div>
             </div>
-
-            {/* Nav grid — 3 columns */}
-            <div className="grid grid-cols-3 gap-1 px-3 pb-2">
+            <div className="grid grid-cols-3 gap-2 px-4 pb-3">
               {NAV.map(({ href, icon, label }) => {
                 const active = router.pathname === href
                 return (
                   <Link
                     key={href}
                     href={href}
-                    className="flex flex-col items-center gap-1 py-3 px-2 rounded-2xl transition-colors"
+                    className="flex flex-col items-center gap-1.5 py-3 px-2 rounded-2xl"
                     style={{
                       background: active ? 'var(--accent-dark)' : 'var(--surface2)',
                       color: active ? '#fff' : '#9ca3af',
