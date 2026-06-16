@@ -20,21 +20,6 @@ ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PLAYWRIGHT_BROWSERS_PATH=0
 ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
 
-# Validate browser engine at build time (non-fatal)
-RUN python -c "
-import subprocess, sys
-r = subprocess.run(
-    [sys.executable, '-c',
-     'from playwright.sync_api import sync_playwright; '
-     'p=sync_playwright().__enter__(); '
-     'b=p.chromium.launch(headless=True, executable_path=\"/usr/bin/chromium\", args=[\"--no-sandbox\",\"--disable-dev-shm-usage\",\"--disable-gpu\"]); '
-     'page=b.new_page(); page.set_content(\"<h1>ok</h1>\"); page.close(); b.close(); '
-     'p.__exit__(None,None,None); print(\"playwright: ok\")'],
-    capture_output=True, timeout=30
-)
-print(r.stdout.decode().strip() if r.returncode == 0 else '[build] playwright unavailable (ok)')
-" 2>/dev/null || true
-
 COPY . .
 
 # Create non-root user and set ownership
