@@ -185,6 +185,12 @@ try:
     app.include_router(_execute_router)
 except Exception:
     pass
+try:
+    from backend.app.api.routes_pipeline import router as _pipeline_router
+    app.include_router(_pipeline_router)
+except Exception:
+    pass
+
 
 # ── Health ────────────────────────────────────────────────────────────────────
 @app.get("/")
@@ -924,3 +930,19 @@ async def ws_endpoint(websocket: WebSocket):
             await websocket.receive_text()
     except WebSocketDisconnect:
         hub.disconnect(websocket)
+
+try:
+    from backend.app.api.routes_pipeline import router as _pipeline_router
+    app.include_router(_pipeline_router)
+    from backend.app.core.pipeline_scheduler import start_scheduler
+    import asyncio
+    asyncio.create_task(start_scheduler())
+except Exception as e:
+    print(f"[pipeline] startup warning: {e}")
+
+try:
+    from backend.app.api.routes_payments import router as _payments_router, sky_router as _sky_router
+    app.include_router(_payments_router)
+    app.include_router(_sky_router)
+except Exception as e:
+    print(f"[payments] startup warning: {e}")
