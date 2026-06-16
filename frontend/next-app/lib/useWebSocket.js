@@ -1,7 +1,9 @@
 import { useEffect, useRef, useCallback } from 'react'
 
-const WS_BASE = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000')
-  .replace(/^http/, 'ws')
+// Derive WS URL from the page's own host so it works on any device/domain.
+const WS_BASE = typeof window !== 'undefined'
+  ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}`
+  : 'ws://localhost:8000'
 
 /**
  * useWebSocket — connects to the backend /ws endpoint and calls onMessage

@@ -1,8 +1,9 @@
-const _rawBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-const BASE = /^https?:\/\//.test(_rawBase) ? _rawBase : 'http://localhost:8000'
+// Use /api prefix so nginx strips it and proxies to the backend.
+// This works from any device — no hardcoded host/port needed.
+const BASE = '/api'
 
 export async function apiFetch(path, opts = {}) {
-  const url = new URL(path, BASE).href
+  const url = BASE + path
   const res = await fetch(url, {
     headers: { 'Content-Type': 'application/json', ...opts.headers },
     ...opts,
