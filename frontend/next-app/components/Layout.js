@@ -43,7 +43,7 @@ export default function Layout({ children }) {
   const router = useRouter()
   const [status, setStatus] = useState(null)
   const [collapsed, setCollapsed] = useState(false)
-  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [sheetOpen, setSheetOpen] = useState(false)
   const [liveEvents, setLiveEvents] = useState([])
   const [wsConnected, setWsConnected] = useState(false)
 
@@ -55,9 +55,18 @@ export default function Layout({ children }) {
     return () => clearInterval(t)
   }, [])
 
+  // Close sheet on navigation
   useEffect(() => {
-    if (drawerOpen) setDrawerOpen(false)
-  }, [router.pathname]) // eslint-disable-line react-hooks/exhaustive-deps
+    setSheetOpen(false)
+  }, [router.pathname])
+
+  // Close sheet on back button / browser back
+  useEffect(() => {
+    if (!sheetOpen) return
+    const onKey = (e) => { if (e.key === 'Escape') setSheetOpen(false) }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [sheetOpen])
 
   useWebSocket(useCallback((msg) => {
     setWsConnected(true)
@@ -69,8 +78,23 @@ export default function Layout({ children }) {
 
   const apiOk = status?.status === 'ok'
 
-  const SidebarContent = ({ compact }) => (
-    <>
+  const DesktopSidebar = () => (
+    <aside
+      className={`hidden md:flex flex-col shrink-0 border-r transition-all duration-200 ${collapsed ? 'w-14' : 'w-56'}`}
+      style={{ background: '#0d0d1a', borderColor: 'var(--border)' }}
+    >
+      <div className="flex items-center gap-2 px-3 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
+        <button
+          onClick={() => setCollapsed(c => !c)}
+          className="glow-dot shrink-0 cursor-pointer border-0 bg-transparent"
+          title={collapsed ? 'Expand' : 'Collapse'}
+        />
+        {!collapsed && (
+          <span className="font-bold text-sm tracking-tight" style={{ color: 'var(--accent)' }}>
+            Super Agent OS
+          </span>
+        )}
+      </div>
       <nav className="flex-1 py-2 overflow-y-auto">
         {NAV.map(({ href, icon, label }) => {
           const active = router.pathname === href
@@ -84,132 +108,59 @@ export default function Layout({ children }) {
               style={active ? { color: 'var(--accent)' } : {}}
             >
               <span className="text-lg shrink-0 leading-none">{icon}</span>
-              {!compact && <span>{label}</span>}
+              {!collapsed && <span>{label}</span>}
             </Link>
           )
         })}
       </nav>
-
-      {!compact && liveEvents.length > 0 && (
+      {!collapsed && liveEvents.length > 0 && (
         <div className="px-3 pb-2 border-t" style={{ borderColor: 'var(--border)' }}>
-          <p className="text-xs text-gray-600 uppercase tracking-wider mt-2 mb-1">Live Activity</p>
+          <p className="text-xs text-gray-600 uppercase tracking-wider mt-2 mb-1">Live</p>
           {liveEvents.map((e, i) => (
             <div key={i} className="flex items-center gap-2 py-0.5">
               <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: STATUS_COLORS[e.status] || '#6b7280' }} />
               <span className="text-xs text-gray-500 truncate">
-                Task #{e.id} → <span style={{ color: STATUS_COLORS[e.status] || '#6b7280' }}>{e.status}</span>
+                #{e.id} <span style={{ color: STATUS_COLORS[e.status] || '#6b7280' }}>{e.status}</span>
               </span>
             </div>
           ))}
         </div>
       )}
-
       <div className="p-3 border-t text-xs flex items-center gap-2" style={{ borderColor: 'var(--border)' }}>
         <StatusDot ok={apiOk} pulse={apiOk} />
-        {!compact && (
+        {!collapsed && (
           <span className="text-gray-500">
             {apiOk ? 'API Online' : 'API Offline'}
             {wsConnected && apiOk && <span className="ml-1 text-green-700">· WS ✓</span>}
           </span>
         )}
       </div>
-    </>
+    </aside>
   )
 
   return (
     <div className="flex" style={{ background: 'var(--bg)', height: '100dvh' }}>
-
-      {/* ── Desktop sidebar (hidden on mobile) ── */}
-      <aside
-        className={`hidden md:flex flex-col shrink-0 border-r transition-all duration-200 ${collapsed ? 'w-14' : 'w-56'}`}
-        style={{ background: '#0d0d1a', borderColor: 'var(--border)' }}
-      >
-        <div className="flex items-center gap-2 px-3 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
-          <button
-            onClick={() => setCollapsed(c => !c)}
-            className="glow-dot shrink-0 cursor-pointer border-0 bg-transparent"
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          />
-          {!collapsed && (
-            <span className="font-bold text-sm tracking-tight" style={{ color: 'var(--accent)' }}>
-              Super Agent OS
-            </span>
-          )}
-        </div>
-        <SidebarContent compact={collapsed} />
-      </aside>
-
-      {/* ── Mobile drawer overlay ── */}
-      {drawerOpen && (
-        <div
-          className="md:hidden fixed inset-0 z-50 flex"
-          style={{ background: 'rgba(0,0,0,0.7)' }}
-          onClick={() => setDrawerOpen(false)}
-          onKeyDown={(e) => { if (e.key === 'Escape') setDrawerOpen(false) }}
-          role="presentation"
-        >
-          <div
-            className="flex flex-col w-64 h-full border-r"
-            style={{ background: '#0d0d1a', borderColor: 'var(--border)' }}
-            onClick={e => e.stopPropagation()}
-            onKeyDown={e => e.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Navigation menu"
-          >
-            <div className="flex items-center justify-between px-4 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
-              <span className="font-bold text-sm" style={{ color: 'var(--accent)' }}>Super Agent OS</span>
-              <button
-                onClick={() => setDrawerOpen(false)}
-                className="text-gray-500 hover:text-gray-200 text-xl w-8 h-8 flex items-center justify-center"
-                aria-label="Close menu"
-              >
-                ✕
-              </button>
-            </div>
-            <SidebarContent compact={false} />
-          </div>
-        </div>
-      )}
+      <DesktopSidebar />
 
       {/* ── Main area ── */}
       <div className="flex-1 flex flex-col min-h-0 min-w-0">
-
-        {/* Mobile top bar */}
-        <header
-          className="md:hidden flex items-center justify-between px-4 border-b shrink-0"
-          style={{ background: '#0d0d1a', borderColor: 'var(--border)', height: '52px' }}
+        {/* Page content — full height on mobile, bottom-padded for nav bar */}
+        <main
+          className="flex-1 overflow-y-auto"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 64px)' }}
         >
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="flex items-center justify-center w-9 h-9 rounded-lg text-gray-400 hover:text-gray-200 text-xl"
-            aria-label="Open menu"
-            style={{ background: 'var(--surface2)' }}
-          >
-            ☰
-          </button>
-          <span className="font-bold text-sm" style={{ color: 'var(--accent)' }}>Super Agent OS</span>
-          <div className="flex items-center gap-2">
-            <StatusDot ok={apiOk} pulse={apiOk} />
-            <span className="text-xs text-gray-500">{apiOk ? 'Live' : 'Off'}</span>
-          </div>
-        </header>
-
-        {/* Page content */}
-        <main className="flex-1 overflow-y-auto" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 72px)' }}>
-          <div className="md:pb-0" style={{ minHeight: '100%' }}>
-            {children}
-          </div>
+          {children}
         </main>
 
-        {/* ── Mobile bottom nav ── */}
+        {/* ── Mobile bottom nav (5 tabs, no top bar) ── */}
         <nav
-          className="md:hidden fixed bottom-0 left-0 right-0 border-t flex"
+          className="md:hidden fixed bottom-0 left-0 right-0 flex border-t"
           style={{
             background: '#0d0d1a',
             borderColor: 'var(--border)',
             paddingBottom: 'env(safe-area-inset-bottom)',
             zIndex: 40,
+            height: '56px',
           }}
         >
           {BOTTOM_NAV.map(({ href, icon, label }) => {
@@ -218,24 +169,89 @@ export default function Layout({ children }) {
               <Link
                 key={href}
                 href={href}
-                className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-colors"
+                className="flex-1 flex flex-col items-center justify-center gap-0.5"
                 style={{ color: active ? 'var(--accent)' : '#6b7280' }}
               >
-                <span className="text-xl leading-none">{icon}</span>
-                <span className="text-[10px] font-medium">{label}</span>
+                <span className="text-[22px] leading-none">{icon}</span>
+                <span className="text-[9px] font-medium tracking-wide">{label}</span>
               </Link>
             )
           })}
+          {/* More tab */}
           <button
-            onClick={() => setDrawerOpen(true)}
-            className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5 transition-colors"
-            style={{ color: drawerOpen ? 'var(--accent)' : '#6b7280' }}
+            onClick={() => setSheetOpen(true)}
+            className="flex-1 flex flex-col items-center justify-center gap-0.5"
+            style={{ color: sheetOpen ? 'var(--accent)' : '#6b7280', background: 'none', border: 'none' }}
+            aria-label="More navigation"
           >
-            <span className="text-xl leading-none">☰</span>
-            <span className="text-[10px] font-medium">More</span>
+            <span className="text-[22px] leading-none">⋯</span>
+            <span className="text-[9px] font-medium tracking-wide">More</span>
           </button>
         </nav>
       </div>
+
+      {/* ── Bottom sheet (slides up from bottom) ── */}
+      {sheetOpen && (
+        <div
+          className="md:hidden fixed inset-0 z-50 flex flex-col justify-end"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={() => setSheetOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="rounded-t-3xl border-t"
+            style={{
+              background: '#0d0d1a',
+              borderColor: 'var(--border)',
+              paddingBottom: 'calc(env(safe-area-inset-bottom) + 8px)',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+            }}
+            onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation"
+          >
+            {/* Handle bar */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 rounded-full bg-gray-700" />
+            </div>
+
+            {/* Status row */}
+            <div className="flex items-center justify-between px-5 py-2 mb-1">
+              <span className="font-bold text-sm" style={{ color: 'var(--accent)' }}>Super Agent OS</span>
+              <div className="flex items-center gap-2">
+                <StatusDot ok={apiOk} pulse={apiOk} />
+                <span className="text-xs text-gray-500">
+                  {apiOk ? 'Online' : 'Offline'}
+                  {wsConnected && apiOk && <span className="ml-1 text-green-700">· WS</span>}
+                </span>
+              </div>
+            </div>
+
+            {/* Nav grid — 3 columns */}
+            <div className="grid grid-cols-3 gap-1 px-3 pb-2">
+              {NAV.map(({ href, icon, label }) => {
+                const active = router.pathname === href
+                return (
+                  <Link
+                    key={href}
+                    href={href}
+                    className="flex flex-col items-center gap-1 py-3 px-2 rounded-2xl transition-colors"
+                    style={{
+                      background: active ? 'var(--accent-dark)' : 'var(--surface2)',
+                      color: active ? '#fff' : '#9ca3af',
+                    }}
+                  >
+                    <span className="text-2xl leading-none">{icon}</span>
+                    <span className="text-[11px] font-medium text-center leading-tight">{label}</span>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
