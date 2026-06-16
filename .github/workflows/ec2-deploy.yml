@@ -6,7 +6,7 @@ on:
       branch:
         description: 'Branch to deploy'
         required: false
-        default: 'claude/supreme-ai-agent-os-deploy-2Txop'
+        default: 'claude/super-agent-os-deploy-2Txop'
 
 jobs:
   deploy:
@@ -25,7 +25,7 @@ jobs:
             git fetch origin ${{ github.event.inputs.branch }} --quiet
             git reset --hard origin/${{ github.event.inputs.branch }} --quiet
             SRC=~/app
-            [ -d ~/app/supreme-ai-agent-os ] && SRC=~/app/supreme-ai-agent-os
+            [ -d ~/app/super-agent-os ] && SRC=~/app/super-agent-os
 
             docker cp $SRC/frontend/static/index.html       supreme-api:/app/frontend/static/
             docker cp $SRC/backend/app/main.py              supreme-api:/app/backend/app/

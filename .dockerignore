@@ -1,0 +1,35 @@
+# Secrets
+.env
+.env.*
+*.pem
+*.key
+secrets/
+
+# Git
+.git
+.gitignore
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Node artifacts
+frontend/next-app/node_modules/
+frontend/next-app/.next/
+frontend/next-app/.env*
+
+# Dev tooling
+.vscode/
+.idea/
+*.swp
+
+# Runtime data (mounted as volume)
+data/
+
+# CI
+.github/
